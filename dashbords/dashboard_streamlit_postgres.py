@@ -10,9 +10,6 @@ import os
 from supabase.client import ClientOptions
 
 
-# Configuração da página deve ser a primeira chamada
-st.set_page_config(page_title="Análise de Dados do Usuário", page_icon="📈")
-
 # Configuração do logging
 logging.basicConfig(
     level=logging.ERROR, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -65,20 +62,20 @@ class Dashboard:
         self.selected_username = None
 
     def render_sidebar(self):
-        st.sidebar.header("Filtros")
+        st.header("Filtros")
         if not self.data.empty:
-            self.selected_username = st.sidebar.selectbox(
+            self.selected_username = st.selectbox(
                 "Selecione o dono do post: ",
                 options=self.data["ownerusername"].unique(),
             )
             self.data_filtered = self.data[
                 self.data["ownerusername"] == self.selected_username
             ]
-            if st.sidebar.button("Atualizar Dados"):
+            if st.button("Atualizar Dados"):
                 st.cache_data.clear()
                 self.data = DatabaseConnection.get_data()
         else:
-            st.sidebar.write("Nenhum dado disponível para filtrar.")
+            st.write("Nenhum dado disponível para filtrar.")
 
     def render_overview(self):
         if self.selected_username:
