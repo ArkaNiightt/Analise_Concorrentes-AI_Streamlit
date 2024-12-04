@@ -94,8 +94,6 @@ def render_dashboard():
 
     top_20_per_owner = filter_top_20_per_owner(df, filter_option)
 
-    print(top_20_per_owner)
-
     for owner, top_20_df in top_20_per_owner:
         st.subheader(
             f"""🔝 Top 20 conteúdos para ({str(owner).upper()}) baseado em {filter_option.replace("likescount", "Likes").replace("commentscount", "Comentários").replace("videoviewcount", "Visualizações Vídeo").replace("videoplaycount", "Reprodução de Vídeo")}"""
