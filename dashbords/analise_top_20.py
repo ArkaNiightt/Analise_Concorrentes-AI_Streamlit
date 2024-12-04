@@ -4,16 +4,25 @@ from dotenv import load_dotenv
 import os
 import pandas as pd
 import logging
+from supabase.client import ClientOptions
+
 
 # Carregar variáveis de ambiente
 load_dotenv()
 
 # Configuração do Supabase
-supabase_url = os.getenv("SUPABASE_URL")
-supabase_key = os.getenv("SUPABASE_KEY")
-supabase: Client = create_client(supabase_url, supabase_key)
-
-DATABASE = os.getenv("SUPABASE_DB")
+supabase_url = st.secrets["SUPABASE_URL"]
+supabase_key = st.secrets["SUPABASE_KEY"]
+supabase: Client = create_client(
+    supabase_url,
+    supabase_key,
+    options=ClientOptions(
+        postgrest_client_timeout=20,
+        storage_client_timeout=20,
+        schema="public",
+    ),
+)
+DATABASE = st.secrets["SUPABASE_DB"]
 
 
 class DatabaseConnection:
@@ -85,9 +94,12 @@ def render_dashboard():
 
     top_20_per_owner = filter_top_20_per_owner(df, filter_option)
 
+    print(top_20_per_owner)
+
     for owner, top_20_df in top_20_per_owner:
         st.subheader(
-            f"🔝 Top 20 conteúdos para ** ({str(owner).upper()}) ** baseado em **{filter_option.replace("likescount", "Likes").replace("commentscount", "Comentários").replace("videoviewcount", "Visualizações Vídeo").replace("videoplaycount", "Reprodução de Vídeo")}**"
+            f"""🔝 Top 20 conteúdos para ({str(owner).upper()}) baseado em {filter_option.replace("likescount", "Likes").replace("commentscount", "Comentários").replace("videoviewcount", "Visualizações Vídeo").replace("videoplaycount", "Reprodução de Vídeo")}"""
+
         )
         st.markdown(
             "Veja abaixo os conteúdos mais populares de acordo com a métrica selecionada:"
@@ -96,7 +108,7 @@ def render_dashboard():
 
     total_values = df.groupby("ownerusername")[filter_option].sum().reset_index()
 
-    st.markdown("### 📊 Comparação entre as contas")
+    st.markdown("### 📊 Comparação ")
     st.bar_chart(total_values.set_index("ownerusername")[filter_option])
 
 

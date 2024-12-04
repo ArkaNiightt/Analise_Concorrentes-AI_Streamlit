@@ -38,8 +38,12 @@ class DatabaseConnection:
     @st.cache_data
     def get_data():
         try:
-            # Ajuste na conexão e consulta ao banco de dados
-            response = supabase.table(DATABASE).select("*").execute().copy()
+            response = (
+                supabase.table(DATABASE)
+                .select("*")
+                .execute()
+            )
+
             if response.data:
                 df = pd.DataFrame(response.data)
                 return df
