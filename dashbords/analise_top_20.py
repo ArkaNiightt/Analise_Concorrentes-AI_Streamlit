@@ -56,7 +56,7 @@ class DatabaseConnection:
 def filter_top_20_per_owner(data, filter_option):
     top_20_per_owner = []
     for owner, group in data.groupby("ownerusername"):
-        top_20 = group.sort_values(by=filter_option, ascending=True).head(20)
+        top_20 = group.sort_values(by=filter_option, ascending=False).head(20)
         top_20_per_owner.append((owner, top_20))
     return top_20_per_owner
 
