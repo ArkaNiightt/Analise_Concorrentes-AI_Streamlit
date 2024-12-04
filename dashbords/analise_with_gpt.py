@@ -1,57 +1,53 @@
 from openai import OpenAI
 from dotenv import load_dotenv
-import psycopg2
 import os
 import pandas as pd
+from supabase import create_client, Client
+import streamlit as st
 
 load_dotenv()
 
-db_config = {
-    "dbname": os.getenv("POSTGRES_DB"),
-    "user": os.getenv("POSTGRES_USER"),
-    "password": os.getenv("POSTGRES_PASSWORD"),
-    "host": os.getenv("POSTGRES_HOST"),
-    "port": os.getenv("POSTGRES_PORT"),
-}
+# Configuração do Supabase
+supabase_url = st.secrets["SUPABASE_URL"]
+supabase_key = st.secrets["SUPABASE_KEY"]
+supabase: Client = create_client(supabase_url, supabase_key)
+
+DATABASE = st.secrets["SUPABASE_DB"]
 
 
-def get_data_from_postgres(ownerusername):
+def get_data_from_supabase(ownerusername):
     try:
-        conn = psycopg2.connect(**db_config)
-        cur = conn.cursor()
+        response = (
+            supabase.table(f"{DATABASE}")
+            .select(
+                "ownerusername",
+                "type",
+                "likescount",
+                "commentscount",
+                "videoviewcount",
+                "videoplaycount",
+                "hashtags",
+                "mentions",
+                "caption",
+            )
+            .eq("ownerusername", ownerusername)
+            .execute()
+        )
 
-        query = f"""
-            SELECT
-            ownerusername,
-            type,
-            likescount,
-            commentscount,
-            videoviewcount,
-            videoplaycount,
-            hashtags,
-            mentions,
-            caption
-            FROM
-            dataset_items
-            WHERE
-            ownerusername = %s;
-        """
-        cur.execute(query, (ownerusername,))
-
-        columns = [desc[0] for desc in cur.description]
-        data = cur.fetchall()
-
-        cur.close()
-        conn.close()
-
-        return columns, data
+        data = response.data
+        if data:
+            columns = list(data[0].keys())
+            rows = [list(item.values()) for item in data]
+            return columns, rows
+        else:
+            return [], []
 
     except Exception as e:
-        print(f"Erro ao conectar ao banco de dados: {e}")
+        print(f"Erro ao conectar ao Supabase: {e}")
         return [], []
 
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 
 def analyze_data_with_gpt(columns, data, model="gpt-4o", temperature=0.5):
@@ -90,7 +86,6 @@ def analyze_data_with_gpt(columns, data, model="gpt-4o", temperature=0.5):
     """
 
     try:
-
         response = client.chat.completions.create(
             model=model,
             temperature=temperature,

@@ -2,10 +2,13 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from dotenv import load_dotenv
-from analise_with_gpt import analyze_data_with_gpt
+from analise_with_gpt import analyze_data_with_gpt, get_data_from_supabase
 import logging
 from io import BytesIO
 from supabase import create_client, Client
+import os
+from supabase.client import ClientOptions
+
 
 # Configuração da página deve ser a primeira chamada
 st.set_page_config(page_title="Análise de Dados do Usuário", page_icon="📈")
@@ -21,7 +24,16 @@ load_dotenv()
 # Configuração do Supabase
 supabase_url = st.secrets["SUPABASE_URL"]
 supabase_key = st.secrets["SUPABASE_KEY"]
-supabase: Client = create_client(supabase_url, supabase_key)
+supabase: Client = create_client(
+    supabase_url,
+    supabase_key,
+    options=ClientOptions(
+        postgrest_client_timeout=20,
+        storage_client_timeout=20,
+        schema="public",
+    ),
+)
+DATABASE = st.secrets["SUPABASE_DB"]
 
 
 class DatabaseConnection:
@@ -29,9 +41,17 @@ class DatabaseConnection:
     @st.cache_data
     def get_data():
         try:
-            response = supabase.table("dataset_items").select("*").execute()
-            df = pd.DataFrame(response.data)
-            return df
+            # Ajuste na conexão e consulta ao banco de dados
+            response = supabase.table(DATABASE).select("*").execute().copy()
+            if response.data:
+                df = pd.DataFrame(response.data)
+                return df
+            else:
+                logging.error("Erro ao obter dados do Supabase: Nenhum dado retornado.")
+                st.error(
+                    "Erro ao obter dados do banco de dados: Nenhum dado retornado."
+                )
+                return pd.DataFrame()
         except Exception as e:
             logging.error(f"Erro ao conectar ao banco de dados: {e}")
             st.error(f"Erro ao conectar ao banco de dados: {e}")
@@ -195,8 +215,7 @@ class Dashboard:
                     "Os insights a seguir foram gerados por uma Inteligência Artificial (GPT) e devem ser utilizados como sugestões, podendo não ser 100% precisos."
                 )
                 # Integrando a análise do GPT
-                columns = self.data_filtered.columns.tolist()
-                data = self.data_filtered.values.tolist()
+                columns, data = get_data_from_supabase(self.selected_username)
                 if columns and data:
                     model = st.selectbox(
                         "Escolha o modelo GPT:",
@@ -240,7 +259,7 @@ class Dashboard:
 
             # Corrigido: passar o DataFrame corretamente
             st.download_button(
-                label="📥 Baixar planilha como XLSX",
+                label="💽 Baixar planilha como XLSX",
                 data=self.convert_df_to_excel(self.data_filtered),
                 file_name=f"concorrentes_({self.selected_username}).xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
