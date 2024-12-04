@@ -96,7 +96,7 @@ def render_dashboard():
 
     total_values = df.groupby("ownerusername")[filter_option].sum().reset_index()
 
-    st.markdown("### 📊 Comparação dos Ownerusernames")
+    st.markdown("### 📊 Comparação entre as contas")
     st.bar_chart(total_values.set_index("ownerusername")[filter_option])
 
 
