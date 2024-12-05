@@ -2,13 +2,12 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from dotenv import load_dotenv
-from analise_with_gpt import analyze_data_with_gpt, get_data_from_supabase
+from analise_with_gpt import analyze_data_with_gpt
 import logging
 from io import BytesIO
-from supabase import create_client, Client
-import os
-from supabase.client import ClientOptions
+from database import data_conection
 
+data_conection = data_conection.DatabaseConnection
 
 # Configuração do logging
 logging.basicConfig(
@@ -18,50 +17,9 @@ logging.basicConfig(
 # Carregar variáveis de ambiente
 load_dotenv()
 
-# Configuração do Supabase
-supabase_url = st.secrets["SUPABASE_URL"]
-supabase_key = st.secrets["SUPABASE_KEY"]
-supabase: Client = create_client(
-    supabase_url,
-    supabase_key,
-    options=ClientOptions(
-        postgrest_client_timeout=20,
-        storage_client_timeout=20,
-        schema="public",
-    ),
-)
-DATABASE = st.secrets["SUPABASE_DB"]
-
-
-class DatabaseConnection:
-    @staticmethod
-    @st.cache_data
-    def get_data():
-        try:
-            response = (
-                supabase.table(DATABASE)
-                .select("*")
-                .execute()
-            )
-
-            if response.data:
-                df = pd.DataFrame(response.data)
-                return df
-            else:
-                logging.error("Erro ao obter dados do Supabase: Nenhum dado retornado.")
-                st.error(
-                    "Erro ao obter dados do banco de dados: Nenhum dado retornado."
-                )
-                return pd.DataFrame()
-        except Exception as e:
-            logging.error(f"Erro ao conectar ao banco de dados: {e}")
-            st.error(f"Erro ao conectar ao banco de dados: {e}")
-            return pd.DataFrame()
-
-
 class Dashboard:
     def __init__(self):
-        self.data = DatabaseConnection.get_data()
+        self.data = data_conection.get_all_data()
         self.data_filtered = None
         self.selected_username = None
 
@@ -77,7 +35,7 @@ class Dashboard:
             ]
             if st.button("Atualizar Dados"):
                 st.cache_data.clear()
-                self.data = DatabaseConnection.get_data()
+                self.data = data_conection.get_all_data()
         else:
             st.write("Nenhum dado disponível para filtrar.")
 
@@ -216,16 +174,14 @@ class Dashboard:
                     "Os insights a seguir foram gerados por uma Inteligência Artificial (GPT) e devem ser utilizados como sugestões, podendo não ser 100% precisos."
                 )
                 # Integrando a análise do GPT
-                columns, data = get_data_from_supabase(self.selected_username)
+                columns, data = data_conection.get_data_from_supabase_for_gpt(self.selected_username)
                 if columns and data:
                     model = st.selectbox(
                         "Escolha o modelo GPT:",
                         [
-                            "gpt-4o",
                             "gpt-4o-mini",
-                            "gpt-4-turbo",
-                            "gpt-4",
                             "gpt-3.5-turbo",
+                            "gpt-4o",
                         ],
                     )
                     temperature = st.slider(

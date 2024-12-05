@@ -1,11 +1,11 @@
 import streamlit as st
-from dashboard_streamlit_postgres import Dashboard
-from analise_top_20 import render_dashboard
+from analise_dados_estatisticas_gerais import Dashboard
+from analise_top_20 import DashboardRenderer
 
 st.set_page_config(page_title="Análise de Dados de Concorrentes", page_icon="📈",layout="wide")
 
-dashboard = Dashboard()
-
+dashboard_analise_estatisticas_gerais = Dashboard()
+dashbord_top_20 = DashboardRenderer()
 
 
 def analise_dashbord_():
@@ -19,7 +19,6 @@ def highlights_top_20():
     st.write("### Visualize top 20 posts de cada plataforma")
     st.markdown("---")
 
-
 # Função principal do aplicativo
 def main():
     # Configuração da página deve ser a primeira chamada
@@ -30,9 +29,9 @@ def main():
 
     st.markdown("---")
     if opcao == "Analise Geral":
-        dashboard.render()
+        dashboard_analise_estatisticas_gerais.render()
     elif opcao == "Top 20":
-        render_dashboard()
+        dashbord_top_20.render()
 
     st.sidebar.markdown("---")
     st.sidebar.info(
