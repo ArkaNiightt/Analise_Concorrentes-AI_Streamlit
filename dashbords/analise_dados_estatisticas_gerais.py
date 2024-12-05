@@ -191,9 +191,10 @@ class Dashboard:
                         value=0.5,
                     )
                     if st.button("Executar Análise de Marketing (GPT)"):
-                        insights = analyze_data_with_gpt(
-                            columns, data, model=model, temperature=temperature
-                        )
+                        with st.spinner("Analisando dados..."):
+                            insights = analyze_data_with_gpt(
+                                columns, data, model=model, temperature=temperature
+                            )
                         if insights:
                             st.write("## Insights de Marketing (GPT)")
                             st.markdown(insights)
