@@ -149,7 +149,7 @@ class DashboardRenderer:
             
         st.markdown("---")
         
-        with st.expander("🔝 Top 20 de Cada Plataforma", expanded=True):
+        with st.expander("🔝 Top 20 de Cada Plataforma", expanded=False):
             if top_20_per_owner:
                 for owner, top_20_df in top_20_per_owner:
                     st.subheader(

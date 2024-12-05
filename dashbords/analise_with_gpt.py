@@ -8,16 +8,10 @@ load_dotenv()
 
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-def analyze_data_with_gpt(columns, data, model="gpt-4o", temperature=0.5):
-    if not columns or not data:
-        return "Não foi possível obter os dados para análise."
-
-    df = pd.DataFrame(data, columns=columns)
-    data_str = df.to_string(index=False)
+def analyze_data_with_gpt(data, model="gpt-4o", temperature=0.5):
+    data_str = data.to_string(index=False)
 
     prompt = f"""Analise os seguintes dados do Instagram e forneça insights de marketing:
-
-    Colunas: {', '.join(columns)}
 
     Dados:
     {data_str}

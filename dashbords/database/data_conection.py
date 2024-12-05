@@ -71,21 +71,20 @@ class DatabaseConnection:
                 .execute()
             )
 
-            data = response.data
-            if data:
-                columns = list(data[0].keys())
-                rows = [list(item.values()) for item in data]
-                return columns, rows
+            if response.data:
+                df = pd.DataFrame(response.data)
+                return df
             else:
                 logging.error("Erro ao obter dados do Supabase: Nenhum dado retornado.")
                 st.error(
                     "Erro ao obter dados do banco de dados: Nenhum dado retornado."
                 )
                 return pd.DataFrame()
-
         except Exception as e:
             logging.error(f"Erro ao conectar ao banco de dados: {e}")
             st.error(f"Erro ao conectar ao banco de dados: {e}")
+            return pd.DataFrame()
+
     @staticmethod
     @st.cache_data
     def get_data_from_supabase_for_gpt_top_20():
@@ -106,21 +105,19 @@ class DatabaseConnection:
                 .execute()
             )
 
-            data = response.data
-            if data:
-                columns = list(data[0].keys())
-                rows = [list(item.values()) for item in data]
-                return columns, rows
+            if response.data:
+                df = pd.DataFrame(response.data)
+                return df
             else:
                 logging.error("Erro ao obter dados do Supabase: Nenhum dado retornado.")
                 st.error(
                     "Erro ao obter dados do banco de dados: Nenhum dado retornado."
                 )
                 return pd.DataFrame()
-
         except Exception as e:
             logging.error(f"Erro ao conectar ao banco de dados: {e}")
             st.error(f"Erro ao conectar ao banco de dados: {e}")
+            return pd.DataFrame()
 
     @staticmethod
     @st.cache_data

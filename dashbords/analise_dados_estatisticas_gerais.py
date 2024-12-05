@@ -17,6 +17,7 @@ logging.basicConfig(
 # Carregar variáveis de ambiente
 load_dotenv()
 
+
 class Dashboard:
     def __init__(self):
         self.data = data_conection.get_all_data()
@@ -174,8 +175,10 @@ class Dashboard:
                     "Os insights a seguir foram gerados por uma Inteligência Artificial (GPT) e devem ser utilizados como sugestões, podendo não ser 100% precisos."
                 )
                 # Integrando a análise do GPT
-                columns, data = data_conection.get_data_from_supabase_for_gpt(self.selected_username)
-                if columns and data:
+                data = data_conection.get_data_from_supabase_for_gpt(
+                    self.selected_username
+                )
+                if not data.empty:
                     model = st.selectbox(
                         "Escolha o modelo GPT:",
                         [
@@ -193,7 +196,7 @@ class Dashboard:
                     if st.button("Executar Análise de Marketing (GPT)"):
                         with st.spinner("Analisando dados..."):
                             insights = analyze_data_with_gpt(
-                                columns, data, model=model, temperature=temperature
+                                data, model=model, temperature=temperature
                             )
                         if insights:
                             st.write("## Insights de Marketing (GPT)")
