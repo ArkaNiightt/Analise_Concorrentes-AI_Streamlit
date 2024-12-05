@@ -81,22 +81,32 @@ class DashboardRenderer:
         if not combined_top_20.empty:
             st.markdown("### 📊 Comparação de Tipos de Postagens")
             post_type_counts = (
-                combined_top_20.groupby(["type", "ownerusername"])
-                .size()
-                .reset_index(name="count")
+            combined_top_20.groupby(["type", "ownerusername"])
+            .size()
+            .reset_index(name="count")
             )
             fig = px.bar(
-                post_type_counts,
-                x="type",
-                y="count",
-                color="ownerusername",
-                title="Comparação de Tipos de Postagens por Usuário",
+            post_type_counts,
+            x="type",
+            y="count",
+            color="ownerusername",
+            title="Comparação de Tipos de Postagens por Usuário",
+            barmode='group',  # Agrupar barras por ownerusername
+            labels={"count": "Quantidade", "type": "Tipo de Postagem", "ownerusername": "Usuário"},
             )
             st.plotly_chart(fig)
+
+            # Adicionar observações para tipos de postagens ausentes
+            st.markdown("### Observações de Tipos de Postagens Ausentes")
+            post_types = ["Image", "Video", "Sidecar"]
+            for owner in combined_top_20["ownerusername"].unique():
+                owner_data = combined_top_20[combined_top_20["ownerusername"] == owner]
+                missing_types = [ptype for ptype in post_types if ptype not in owner_data["type"].values]
+                if missing_types:
+                    st.warning(f"A página {owner} não possui postagens entre o top 20 nos tipos: {', '.join(missing_types)}")
             
             st.markdown("---")
             
-
             # Média de Visualizações por Usuário
             st.markdown("### 📊 Média de Visualizações por Usuário")
             avg_views_per_owner = (
@@ -153,7 +163,7 @@ class DashboardRenderer:
                 st.warning("Nenhum dado para o Top 20 de Cada Plataforma.")
 
         st.markdown("---")
-
+        
         show_insights = st.checkbox("Ver Insights de Marketing (GPT)")
         if show_insights:
             st.info(
