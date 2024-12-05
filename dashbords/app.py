@@ -8,13 +8,13 @@ dashboard = Dashboard()
 
 
 
-def download_video():
+def analise_dashbord_():
     st.header("📥 Analise AI")
     st.write("### Faça uma analise definitiva de diferentes plataformas.")
     st.markdown("---")
 
 
-def download_em_massa():
+def highlights_top_20():
     st.header("📥 Ver Top 20 de Cada Plataforma")
     st.write("### Visualize top 20 posts de cada plataforma")
     st.markdown("---")
