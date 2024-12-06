@@ -129,6 +129,7 @@ def display_top_20_posts(dataframe, metricas, choice):
 
 
 def analise_gpt(data):
+    show_insights = None
     show_insights = st.checkbox("Ver Insights de Marketing (GPT)")
     if show_insights:
         st.info(

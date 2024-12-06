@@ -88,15 +88,16 @@ class Dashboard:
             video_data = self.data_filtered[self.data_filtered["type"] == "Video"]
             video_data_frame = video_data[
                 [
+                    "ownerusername",
+                    "type",
                     "videoplaycount",
                     "videoviewcount",
                     "likescount",
                     "commentscount",
                     "url",
-                    "ownerusername",
-                    "type",
                 ]
-            ]
+            ].sort_values(by=["videoviewcount", "videoplaycount"], ascending=False)
+
             if not video_data.empty:
                 st.subheader("🎥 Análise de Vídeos")
 
@@ -135,40 +136,85 @@ class Dashboard:
                 )
                 st.plotly_chart(fig, use_container_width=True)
 
-                # Visualização do DataFrame
+                # Visualização do DataFrame com colunas configuradas
                 st.subheader("📊 Dados Filtrados para Análise de Vídeos")
-                st.dataframe(video_data_frame, use_container_width=True)
+                st.dataframe(
+                    video_data_frame,
+                    column_config={
+                        "ownerusername": "Usuário",
+                        "type": "Tipo",
+                        "url": st.column_config.LinkColumn("Link"),
+                        "videoplaycount": st.column_config.NumberColumn(
+                            "Reproduções", format="%d"
+                        ),
+                        "videoviewcount": st.column_config.NumberColumn(
+                            "Visualizações", format="%d"
+                        ),
+                        "likescount": st.column_config.NumberColumn(
+                            "Likes", format="%d"
+                        ),
+                        "commentscount": st.column_config.NumberColumn(
+                            "Comentários", format="%d"
+                        ),
+                    },
+                    hide_index=True,
+                    use_container_width=True,
+                )
 
     def render_likes_comments_scatter(self):
         if self.data_filtered is not None and not self.data_filtered.empty:
             st.subheader("👍 Likes x Comentários 💬")
+
+            # Create filtered dataframe with positive values only
             filtered_data = self.data_filtered.copy()
-            filtered_data_frame = filtered_data[
-                ["likescount", "commentscount", "url", "type", "ownerusername"]
-            ]
-            filtered_data["likescount"] = filtered_data["likescount"].apply(
-                lambda x: max(0, x)
+            filtered_data["likescount"] = filtered_data["likescount"].clip(lower=0)
+            filtered_data["commentscount"] = filtered_data["commentscount"].clip(
+                lower=0
             )
-            filtered_data["commentscount"] = filtered_data["commentscount"].apply(
-                lambda x: max(0, x)
-            )
+
+            # Create display dataframe with reordered columns
+            display_data = filtered_data[
+                ["ownerusername", "type", "likescount", "commentscount", "url"]
+            ].sort_values(by=["likescount", "commentscount"], ascending=False)
+
+            # Create scatter plot
             fig = px.scatter(
                 filtered_data,
                 x="likescount",
                 y="commentscount",
+                hover_data=["url", "type"],
                 title="Relacionamento entre Likes e Comentários",
-                labels={"likescount": "Likes", "commentscount": "Comentários"},
-                color_discrete_sequence=["#EF553B"],
+                labels={
+                    "likescount": "Likes",
+                    "commentscount": "Comentários",
+                    "ownerusername": "Usuário",
+                    "type": "Tipo",
+                },
+                color="type",
                 template="plotly_white",
             )
-            st.plotly_chart(fig)
+            st.plotly_chart(fig, use_container_width=True)
 
-            # Visualização do DataFrame
+            # Display filtered data table
             st.subheader("📊 Dados Filtrados para Likes x Comentários")
-            st.dataframe(filtered_data_frame, use_container_width=True)
+            st.dataframe(
+                display_data,
+                column_config={
+                    "ownerusername": "Usuário",
+                    "type": "Tipo",
+                    "url": st.column_config.LinkColumn("Link"),
+                    "likescount": st.column_config.NumberColumn("Likes", format="%d"),
+                    "commentscount": st.column_config.NumberColumn(
+                        "Comentários", format="%d"
+                    ),
+                },
+                hide_index=True,
+                use_container_width=True,
+            )
 
     def render_observations(self):
         if self.data_filtered is not None and not self.data_filtered.empty:
+            show_insights = None
             show_insights = st.checkbox("Ver Insights de Marketing (GPT)")
             if show_insights:
                 st.info(
@@ -216,9 +262,50 @@ class Dashboard:
             pagina = str(self.selected_username).upper()
 
             st.subheader(f"📋 Visualização Geral dos Dados da Página: {pagina}")
-            st.dataframe(self.data_filtered)
 
-            # Corrigido: passar o DataFrame corretamente
+            # Create display dataframe with selected columns and proper sorting
+            display_data = (
+                self.data_filtered[
+                    [
+                        "ownerusername",
+                        "type",
+                        "likescount",
+                        "commentscount",
+                        "videoplaycount",
+                        "videoviewcount",
+                        "url",
+                        "timestamp",
+                    ]
+                ]
+                .sort_values(by="timestamp", ascending=False)
+                .reset_index(drop=True)
+            )
+
+            # Display enhanced dataframe with column configurations
+            st.dataframe(
+                display_data,
+                column_config={
+                    "url": st.column_config.LinkColumn("Link"),
+                    "likescount": st.column_config.NumberColumn("Likes", format="%d"),
+                    "commentscount": st.column_config.NumberColumn(
+                        "Comentários", format="%d"
+                    ),
+                    "videoplaycount": st.column_config.NumberColumn(
+                        "Reproduções", format="%d"
+                    ),
+                    "videoviewcount": st.column_config.NumberColumn(
+                        "Visualizações", format="%d"
+                    ),
+                    "timestamp": st.column_config.DatetimeColumn(
+                        "Data", format="DD/MM/YYYY HH:mm"
+                    ),
+                    "ownerusername": "Usuário",
+                    "type": "Tipo",
+                },
+                use_container_width=True,
+            )
+
+            # Download button
             st.download_button(
                 label="💽 Baixar planilha como XLSX",
                 data=self.convert_df_to_excel(self.data_filtered),
