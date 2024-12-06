@@ -1,203 +1,276 @@
 import streamlit as st
+import pandas as pd
+from io import BytesIO
 from dotenv import load_dotenv
 from database import data_conection
-import pandas as pd
-import plotly.express as px
 from analise_with_gpt import analyze_data_with_gpt_top_20
+import json
+import plotly.express as px
 
 # Carregar variáveis de ambiente
 load_dotenv()
 
 
-# Classe para lidar com as operações de filtro
-class ContentFilter:
-    @staticmethod
-    def filter_top_20_per_owner(data, filter_option):
-        top_20_per_owner = []
-        for owner, group in data.groupby("ownerusername"):
-            top_20 = group.sort_values(by=filter_option, ascending=False).head(20)
-            top_20_reset = top_20.reset_index(drop=True)
-            top_20_per_owner.append((owner, top_20_reset))
-        return top_20_per_owner
-
-    @staticmethod
-    def filter_top_20_combined(data, filter_option):
-        top_20_per_owner = []
-        for owner, group in data.groupby("ownerusername"):
-            top_20 = group.sort_values(by=filter_option, ascending=False).head(20)
-            top_20["owner"] = owner
-            top_20_per_owner.append(top_20)
-        if top_20_per_owner:
-            combined_top_20 = pd.concat(top_20_per_owner, ignore_index=True)
-        else:
-            combined_top_20 = pd.DataFrame()
-        return combined_top_20
+df = data_conection.DatabaseConnection().get_data()
 
 
-# Classe para lidar com o dashboard Streamlit
-class DashboardRenderer:
-    def __init__(self):
-        self.db_handler = data_conection.DatabaseConnection()
-        self.content_filter = ContentFilter()
+def filter_top_20_combined(data, filter_option):
+    # Usando list comprehension ao invés de um loop for tradicional
+    top_20_per_owner = [
+        group.nlargest(20, columns=filter_option).assign(ownerusername=owner)
+        for owner, group in data.groupby("ownerusername")
+    ]
 
-    def render_dashboard(self):
-        st.title("📊 Top 20 Conteúdos Populares")
-        st.markdown(
-            """
-            ### Bem-vindo ao Painel de Top 20 Conteúdos!
-            Nesta aplicação, você pode visualizar os conteúdos mais populares (vídeos, sidecars, imagens) com base em diferentes métricas.
-            """
+    # Verifica se a lista não está vazia antes de fazer a concatenação
+    if not top_20_per_owner:
+        return pd.DataFrame()
+
+    # Concatena e ordena os resultados
+    return (
+        pd.concat(top_20_per_owner, ignore_index=True)
+        .nlargest(n=len(data), columns=filter_option)
+        .reset_index(drop=True)
+    )
+
+
+def filter_top_20_per_owner(data, filter_option):
+    # Using list comprehension to create a dictionary structure
+    result = {
+        owner: group.nlargest(20, columns=filter_option)
+        .reset_index(drop=True)
+        .to_dict("records")
+        for owner, group in data.groupby("ownerusername")
+    }
+    return result
+
+
+def display_likes_statistics(
+    dataframe,
+    metricas,
+    filtro,
+):
+
+    top_20_per_owner = []
+    for owner, group in dataframe.groupby("ownerusername"):
+        top_20 = group.sort_values(by=filtro, ascending=False).head(20)
+        top_20_reset = top_20.reset_index(drop=True)
+        top_20_per_owner.append((owner, top_20_reset))
+
+    # Preparar os dados para o gráfico
+    chart_data = (
+        pd.concat([group for _, group in top_20_per_owner])[["ownerusername", filtro]]
+        .groupby("ownerusername")
+        .mean()
+        .reset_index()
+    )
+
+    # Arredondar os valores de likescount
+    chart_data[filtro] = chart_data[filtro].round(2)
+
+    st.markdown(f"#### 🔍 Média por ({metricas[filtro]})")
+    st.write("")
+    # Exibir o gráfico de barras
+    st.bar_chart(chart_data.set_index("ownerusername"))
+
+
+def display_types_statistics(dataframe, filtro):
+    if filtro in ["likescount", "commentscount"]:
+        st.markdown("#### 📊 Desempenho por Tipo de Conteúdo")
+        # Usar o filter_top_20_combined para obter os top 20 posts
+        filtered_data = filter_top_20_combined(dataframe, filtro)
+
+        # Exibir o gráfico com tipo e ownerusername, com valores arredondados
+        grouped_by_owner = (
+            filtered_data.groupby(["ownerusername", "type"])[filtro]
+            .mean()
+            .round(2)
+            .unstack()
         )
-        st.markdown("---")
-
-        with st.spinner("Carregando dados..."):
-            df = self.db_handler.get_data()
-
-        if df is None or df.empty:
-            st.warning("Nenhum dado encontrado.")
-            return
-
-        filter_option = st.selectbox(
-            "Selecione o critério para o Top 20:",
-            ("likescount", "commentscount", "videoviewcount", "videoplaycount"),
-        )
-
-        # Renderização do Top 20 Geral de Cada Plataforma
-        st.subheader("🔝 Top 20 Geral de Cada Plataforma")
-        combined_top_20 = self.content_filter.filter_top_20_combined(df, filter_option)
-        if not combined_top_20.empty:
-            st.dataframe(combined_top_20, use_container_width=True)
-        else:
-            st.warning("Nenhum dado para o Top 20 Geral de Cada Plataforma.")
-
-        # Renderização do Top 20 por Plataforma
-        top_20_per_owner = self.content_filter.filter_top_20_per_owner(
-            df, filter_option
-        )
+        st.bar_chart(grouped_by_owner)
         
-        st.markdown("---")
-
-        # Gráfico de Comparação de Tipos de Postagens
-        if not combined_top_20.empty:
-            st.markdown("### 📊 Comparação de Tipos de Postagens")
-            post_type_counts = (
-            combined_top_20.groupby(["type", "ownerusername"])
-            .size()
-            .reset_index(name="count")
-            )
-            fig = px.bar(
+        st.markdown("### 📊 Comparação Geral Detalhada Quantidade de Tipos de Postagens")
+        post_type_counts = (
+            dataframe.groupby(["type", "ownerusername"]).size().reset_index(name="count")
+        )
+        fig = px.bar(
             post_type_counts,
             x="type",
             y="count",
             color="ownerusername",
             title="Comparação de Tipos de Postagens por Usuário",
-            barmode='group',  # Agrupar barras por ownerusername
-            labels={"count": "Quantidade", "type": "Tipo de Postagem", "ownerusername": "Usuário"},
-            )
-            st.plotly_chart(fig)
+            barmode="group",  # Agrupar barras por ownerusername
+            labels={
+                "count": "Quantidade",
+                "type": "Tipo de Postagem",
+                "ownerusername": "Usuário",
+            },
+        )
+        st.plotly_chart(fig)
 
-            # Adicionar observações para tipos de postagens ausentes
-            st.markdown("### Observações de Tipos de Postagens Ausentes")
-            post_types = ["Image", "Video", "Sidecar"]
-            for owner in combined_top_20["ownerusername"].unique():
-                owner_data = combined_top_20[combined_top_20["ownerusername"] == owner]
-                missing_types = [ptype for ptype in post_types if ptype not in owner_data["type"].values]
-                if missing_types:
-                    st.warning(f"A página {owner} não possui postagens entre o top 20 nos tipos: {', '.join(missing_types)}")
-            
-            st.markdown("---")
-            
-            # Média de Visualizações por Usuário
-            st.markdown("### 📊 Média de Visualizações por Usuário")
-            avg_views_per_owner = (
-                combined_top_20.groupby("ownerusername")["videoviewcount"]
-                .mean()
-                .reset_index()
+    else:
+        pass
+
+
+def display_top_20_posts(dataframe, metricas, choice):
+
+    st.dataframe(
+        dataframe,
+        use_container_width=True,
+        column_order=["ownerusername", "type", choice, "url"],
+        column_config={
+            "url": st.column_config.LinkColumn(
+                "Link", help="Clique para abrir o post no Instagram"
+            ),
+            "ownerusername": st.column_config.TextColumn("Pagina"),
+            "type": st.column_config.TextColumn("Tipo"),
+            choice: st.column_config.NumberColumn(metricas[choice]),
+        },
+    )
+
+
+def analise_gpt(data):
+    show_insights = st.checkbox("Ver Insights de Marketing (GPT)")
+    if show_insights:
+        st.info(
+            "Os insights a seguir foram gerados por uma Inteligência Artificial (GPT) e devem ser utilizados como sugestões, podendo não ser 100% precisos."
+        )
+        if not df.empty:
+            model = st.selectbox(
+                "Escolha o modelo GPT:",
+                [
+                    "gpt-4o-mini",
+                    "gpt-3.5-turbo",
+                    "gpt-4o",
+                ],
             )
-            fig_avg = px.bar(
-                avg_views_per_owner,
-                x="ownerusername",
-                y="videoviewcount",
-                title="Média de Visualizações por Usuário",
-                labels={
-                    "videoviewcount": "Média de Visualizações",
-                    "ownerusername": "Usuário",
-                },
+            temperature = st.slider(
+                "Temperatura do Modelo:",
+                min_value=0.0,
+                max_value=2.0,
+                value=0.5,
             )
-            st.plotly_chart(fig_avg)
-        else:
-            st.warning(
-                "Nenhum dado disponível para o gráfico de comparação de tipos de postagens."
-            )
-            
-        st.markdown("---")
-        
-        # Gráfico de Comparação de Likes por Usuário
-        total_likes = df.groupby("ownerusername")["likescount"].sum().reset_index()
-        if not total_likes.empty:
-            st.markdown("### 📊 Comparação de Likes por Usuário")
-            fig_likes = px.bar(
-                total_likes,
-                x="ownerusername",
-                y="likescount",
-                title="Total de Likes por Usuário",
-                labels={"likescount": "Total de Likes", "ownerusername": "Usuário"},
-            )
-            st.plotly_chart(fig_likes)
-        else:
-            st.warning("Nenhum dado para o gráfico de comparação de likes por usuário.")
-            
-        st.markdown("---")
-        
-        with st.expander("🔝 Top 20 de Cada Plataforma", expanded=False):
-            if top_20_per_owner:
-                for owner, top_20_df in top_20_per_owner:
-                    st.subheader(
-                        f"({str(owner).upper()}) baseado em {filter_option.replace('likescount', 'Likes').replace('commentscount', 'Comentários').replace('videoviewcount', 'Visualizações Vídeo').replace('videoplaycount', 'Reprodução de Vídeo')}"
+            if st.button("Executar Análise de Marketing (GPT)"):
+                with st.spinner("Analisando dados..."):
+                    insights = analyze_data_with_gpt_top_20(
+                        data, model=model, temperature=temperature
                     )
-                    st.markdown(
-                        "Veja abaixo os conteúdos mais populares de acordo com a métrica selecionada:"
-                    )
-                    st.dataframe(top_20_df, use_container_width=True)
-            else:
-                st.warning("Nenhum dado para o Top 20 de Cada Plataforma.")
+                if insights:
+                    st.write("## Insights de Marketing (GPT)")
+                    st.markdown(insights)
 
-        st.markdown("---")
-        
-        show_insights = st.checkbox("Ver Insights de Marketing (GPT)")
-        if show_insights:
-            st.info(
-                "Os insights a seguir foram gerados por uma Inteligência Artificial (GPT) e devem ser utilizados como sugestões, podendo não ser 100% precisos."
+
+def expander_detalhado(data, data_gpt):
+    with st.expander("🔝 Top 20 Detalhado", expanded=False):
+        st.dataframe(
+            data,
+            use_container_width=True,
+            column_order=[
+                "ownerusername",
+                "type",
+                "likescount",
+                "commentscount",
+                "videoviewcount",
+                "videoplaycount",
+                "url",
+            ],
+            column_config={
+                "url": st.column_config.LinkColumn(
+                    "Link", help="Clique para abrir o post no Instagram"
+                ),
+                "ownerusername": st.column_config.TextColumn("Pagina"),
+                "type": st.column_config.TextColumn("Tipo"),
+                "likescount": st.column_config.NumberColumn("Likes"),
+                "commentscount": st.column_config.NumberColumn("Comentários"),
+                "videoviewcount": st.column_config.NumberColumn("Visualizações Vídeo"),
+                "videoplaycount": st.column_config.NumberColumn("Reprodução de Vídeo"),
+            },
+        )
+        st.json(data_gpt, expanded=False)
+
+        # Create Excel file in memory
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+            data.to_excel(writer, index=False, sheet_name="Sheet1")
+        output.seek(0)
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.download_button(
+                label="💽 Baixar planilha como XLSX",
+                data=output.getvalue(),
+                file_name="concorrentes_(Top_20_Detalhado).xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             )
-            data = combined_top_20
-            if not data.empty:
-                model = st.selectbox(
-                    "Escolha o modelo GPT:",
-                    [
-                        "gpt-4o-mini",
-                        "gpt-3.5-turbo",
-                        "gpt-4o",
-                    ],
-                )
-                temperature = st.slider(
-                    "Temperatura do Modelo:",
-                    min_value=0.0,
-                    max_value=2.0,
-                    value=0.5,
-                )
-                if st.button("Executar Análise de Marketing (GPT)"):
-                    with st.spinner("Analisando dados..."):
-                        insights = analyze_data_with_gpt_top_20(
-                            data, model=model, temperature=temperature
-                        )
-                    if insights:
-                        st.write("## Insights de Marketing (GPT)")
-                        st.markdown(insights)
 
-    def render(self):
-        self.render_dashboard()
+        with col2:
+            if data_gpt:  # Check if data_gpt is not empty
+                json_str = json.dumps(data_gpt, indent=2, ensure_ascii=False)
+                st.download_button(
+                    label="📥 Baixar JSON",
+                    data=json_str,
+                    file_name="concorrentes_top_20.json",
+                    mime="application/json",
+                )
+
+
+def render():
+    # Criar um dicionário com rótulos mais amigáveis
+    metricas = {
+        "likescount": "Número de Curtidas",
+        "commentscount": "Número de Comentários",
+        "videoviewcount": "Visualizações do Vídeo",
+        "videoplaycount": "Reproduções do Vídeo",
+    }
+
+    # Criar selectbox com layout melhorado
+    st.subheader("📊 Selecione a Métrica de Análise")
+    choice = st.selectbox(
+        "Escolha qual métrica você deseja analisar:",
+        options=list(metricas.keys()),
+        format_func=lambda x: metricas[x],
+        help="Selecione uma métrica para visualizar as estatísticas correspondentes",
+    )
+    # Título principal com emoji e formatação
+    st.title("📱 Análise de Dados do Instagram")
+
+    # Descrição com mais contexto e estilo
+    st.markdown(
+        """
+    ### 🎯 Objetivo
+    Esta ferramenta oferece uma análise detalhada do desempenho de conteúdo no Instagram,
+    permitindo visualizar métricas importantes e identificar tendências.
+    
+    """
+    )
+    st.markdown("---")
+
+    display_likes_statistics(df, metricas=metricas, filtro=choice)
+
+    display_types_statistics(df, filtro=choice)
+
+    # Seção de top posts com estilo
+    st.markdown("---")
+    st.subheader("🏆 Top 20 Posts com Maior Engajamento por Página")
+    st.markdown(
+        """
+    Abaixo estão listados os posts mais relevantes de cada página, ordenados pela métrica selecionada.
+    Clique nos links para visualizar os posts diretamente no Instagram.
+    """
+    )
+    top_20 = filter_top_20_combined(df, filter_option=choice)
+    data_gpt = filter_top_20_per_owner(df, filter_option=choice)
+
+    display_top_20_posts(top_20, metricas=metricas, choice=choice)
+    
+    st.write("")
+
+    expander_detalhado(top_20, data_gpt)
+
+    st.markdown("---")
+
+    analise_gpt(data_gpt)
 
 
 if __name__ == "__main__":
-    dashboard = DashboardRenderer()
-    dashboard.render()
+    render()

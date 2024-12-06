@@ -205,7 +205,7 @@ class Dashboard:
     def convert_df_to_excel(self, df):
         output = BytesIO()
         with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-            df.to_excel(writer, index=False, sheet_name="Transações")
+            df.to_excel(writer, index=False, sheet_name="Sheet1")
         output.seek(
             0
         )  # Certifique-se de voltar para o início do arquivo antes de retorná-lo

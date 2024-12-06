@@ -1,5 +1,6 @@
 from openai import OpenAI
 from dotenv import load_dotenv
+import json
 
 import pandas as pd
 import streamlit as st
@@ -61,23 +62,21 @@ def analyze_data_with_gpt(data, model="gpt-4o", temperature=0.5):
 
 def analyze_data_with_gpt_top_20(data, model="gpt-4o", temperature=0.5):
 
-    data_str = data.to_string(index=False)
-
+    data_str = json.dumps(data, indent=2)
     prompt = f"""Analise os seguintes dados do Instagram e forneça insights de marketing:
 
     Dados:
     {data_str}
 
     Com base nesses dados, forneça uma análise comparativa dos resultados das empresas, observando o engajamento e oferecendo recomendações de marketing:
-    1. Comparação entre as diferentes empresas em termos de engajamento (comentários e curtidas).
-    2. Tipos de conteúdo que têm melhor desempenho para cada empresa.
-    3. Padrões de engajamento que se destacam.
-    4. Melhores horários para postagem para maximizar o engajamento.
-    5. Usuários mais influentes em cada empresa.
-    6. Desempenho de vídeos em comparação a outros tipos de conteúdo.
-    7. Temas ou tópicos que geram mais engajamento.
-    8. Recomendações específicas para melhorar o engajamento de cada empresa.
-    9. Segmente semanticamente pelo significado das palavras, categorizando cada parte dos elementos 'captions' enviada em {data_str}, com isso crie categorias [
+    1. Tipos de conteúdo que têm melhor desempenho para cada empresa.
+    2. Padrões de engajamento que se destacam.
+    3. Melhores horários para postagem para maximizar o engajamento.
+    4. Usuários mais influentes em cada empresa.
+    5. Desempenho de vídeos em comparação a outros tipos de conteúdo.
+    6. Temas ou tópicos que geram mais engajamento.
+    7. Recomendações específicas para melhorar o engajamento de cada empresa.
+    8. Segmente semanticamente pelo significado das palavras, categorizando cada parte dos elementos 'captions' enviada em {data_str}, com isso crie categorias [
     "Recursos e ferramentas",
     "Motivacional",
     "Eventos e Promoções",
