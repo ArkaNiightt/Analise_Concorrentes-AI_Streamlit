@@ -30,7 +30,6 @@ DATABASE = st.secrets["SUPABASE_DB"]
 
 
 class DatabaseConnection:
-    @staticmethod
     @st.cache_data
     def get_all_data():
         try:
@@ -50,7 +49,6 @@ class DatabaseConnection:
             st.error(f"Erro ao conectar ao banco de dados: {e}")
             return pd.DataFrame()
 
-    @staticmethod
     @st.cache_data
     def get_data_from_supabase_for_gpt(ownerusername):
         try:
@@ -85,7 +83,6 @@ class DatabaseConnection:
             st.error(f"Erro ao conectar ao banco de dados: {e}")
             return pd.DataFrame()
 
-    @staticmethod
     @st.cache_data
     def get_data_from_supabase_for_gpt_top_20():
         try:
@@ -119,7 +116,6 @@ class DatabaseConnection:
             st.error(f"Erro ao conectar ao banco de dados: {e}")
             return pd.DataFrame()
 
-    @staticmethod
     @st.cache_data
     def get_data():
         try:
