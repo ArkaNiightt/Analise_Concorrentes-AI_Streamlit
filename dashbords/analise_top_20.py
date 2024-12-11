@@ -1,17 +1,12 @@
 import streamlit as st
 import pandas as pd
 from io import BytesIO
-from dotenv import load_dotenv
 from database import data_conection
 from analise_with_gpt import analyze_data_with_gpt_top_20
 import json
 import plotly.express as px
 
-# Carregar variáveis de ambiente
-load_dotenv()
 
-
-df = data_conection.DatabaseConnection().get_data()
 
 
 def filter_top_20_combined(data, filter_option):
@@ -135,7 +130,7 @@ def analise_gpt(data):
         st.info(
             "Os insights a seguir foram gerados por uma Inteligência Artificial (GPT) e devem ser utilizados como sugestões, podendo não ser 100% precisos."
         )
-        if not df.empty:
+        if not data.empty:
             model = st.selectbox(
                 "Escolha o modelo GPT:",
                 [
@@ -216,6 +211,7 @@ def expander_detalhado(data, data_gpt):
 
 
 def render():
+    df = data_conection.get_data()
     # Criar um dicionário com rótulos mais amigáveis
     metricas = {
         "likescount": "Número de Curtidas",

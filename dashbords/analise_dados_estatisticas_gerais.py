@@ -7,16 +7,6 @@ import logging
 from io import BytesIO
 from database import data_conection
 
-data_conection = data_conection.DatabaseConnection
-
-# Configuração do logging
-logging.basicConfig(
-    level=logging.ERROR, format="%(asctime)s - %(levelname)s - %(message)s"
-)
-
-# Carregar variáveis de ambiente
-load_dotenv()
-
 
 class Dashboard:
     def __init__(self):
