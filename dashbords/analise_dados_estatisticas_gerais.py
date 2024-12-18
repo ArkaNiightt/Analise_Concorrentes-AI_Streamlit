@@ -33,7 +33,8 @@ class Dashboard:
     def render_overview(self):
         if self.selected_username:
             st.title(
-                f"📈 Análise Interativa dos Dados do Usuário: {self.selected_username}"
+                f"📈 Análise Interativa dos Dados do Usuário: {
+                    self.selected_username}"
             )
             st.markdown(
                 "Explore as métricas e dados de postagens, visualizando insights importantes de forma interativa e atraente."
@@ -58,8 +59,10 @@ class Dashboard:
                 "commentscount" in self.data_filtered.columns
                 and "likescount" in self.data_filtered.columns
             ):
-                avg_comments = self.data_filtered["commentscount"].clip(lower=0).mean()
-                avg_likes = self.data_filtered["likescount"].clip(lower=0).mean()
+                avg_comments = self.data_filtered["commentscount"].clip(
+                    lower=0).mean()
+                avg_likes = self.data_filtered["likescount"].clip(
+                    lower=0).mean()
                 col1, col2 = st.columns(2)
                 with col1:
                     st.metric(
@@ -157,7 +160,8 @@ class Dashboard:
 
             # Create filtered dataframe with positive values only
             filtered_data = self.data_filtered.copy()
-            filtered_data["likescount"] = filtered_data["likescount"].clip(lower=0)
+            filtered_data["likescount"] = filtered_data["likescount"].clip(
+                lower=0)
             filtered_data["commentscount"] = filtered_data["commentscount"].clip(
                 lower=0
             )

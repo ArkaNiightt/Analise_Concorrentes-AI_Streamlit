@@ -61,7 +61,6 @@ def analyze_data_with_gpt(data, model="gpt-4o", temperature=0.5):
 
 
 def analyze_data_with_gpt_top_20(data, model="gpt-4o", temperature=0.5):
-
     data_str = json.dumps(data, indent=2)
     prompt = f"""Analise os seguintes dados do Instagram e forneça insights de marketing:
 

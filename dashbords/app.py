@@ -28,8 +28,10 @@ def main():
     st.markdown("---")
     if opcao == "Analise Geral":
         dashboard_analise_estatisticas_gerais.render()
+        st.toast("Dados carregados com sucesso.", icon="✅")
     elif opcao == "Top 20":
         analise_top_20.render()
+        st.toast("Dados carregados com sucesso.", icon="✅")
 
     st.sidebar.markdown("---")
     with st.sidebar:
